@@ -1,12 +1,26 @@
 from PyQt6.QtCore import pyqtSignal
 
-from pyqtgraph import LabelItem, TextItem, ViewBox, ImageItem, InfiniteLine, PlotItem
+from pyqtgraph import TextItem, ViewBox, ImageItem, InfiniteLine, PlotItem
 from pyqtgraph.GraphicsScene.mouseEvents import MouseClickEvent
 import numpy as np
 
+
 class MatrixPlotItem(PlotItem):
-    def __init__(self, parent=None, name=None, labels=None, title=None, viewBox=None, axisItems=None, enableMenu=True, **kargs):
-        super().__init__(parent, name, labels, title, viewBox, axisItems, enableMenu, **kargs)
+    def __init__(
+        self,
+        parent=None,
+        name=None,
+        labels=None,
+        title=None,
+        viewBox=None,
+        axisItems=None,
+        enableMenu=True,
+        **kargs,
+    ):
+        super().__init__(
+            parent, name, labels, title, viewBox, axisItems, enableMenu, **kargs
+        )
+
 
 class MatrixView(ViewBox):
     matrixSet = pyqtSignal()
@@ -17,28 +31,51 @@ class MatrixView(ViewBox):
     keep_range = True
 
     value_text = None
- 
-    def __init__(self, parent=None, border=None, lockAspect=False, enableMouse=True, invertY=True, enableMenu=False, name=None, invertX=False, defaultPadding=0., colormap=None, keep_range = True):
-        super().__init__(parent, border, lockAspect, enableMouse, invertY, enableMenu, name, invertX, defaultPadding)
+
+    def __init__(
+        self,
+        parent=None,
+        border=None,
+        lockAspect=False,
+        enableMouse=True,
+        invertY=True,
+        enableMenu=False,
+        name=None,
+        invertX=False,
+        defaultPadding=0.0,
+        colormap=None,
+        keep_range=True,
+    ):
+        super().__init__(
+            parent,
+            border,
+            lockAspect,
+            enableMouse,
+            invertY,
+            enableMenu,
+            name,
+            invertX,
+            defaultPadding,
+        )
 
         self.keep_range = keep_range
 
         self.matrix_image_item = ImageItem(colorMap=colormap)
         self.addItem(self.matrix_image_item)
 
-        self.vline = InfiniteLine(angle=90, movable=False, pen='w')
-        self.hline = InfiniteLine(angle=0, movable=False, pen='w')
+        self.vline = InfiniteLine(angle=90, movable=False, pen="w")
+        self.hline = InfiniteLine(angle=0, movable=False, pen="w")
         self.addItem(self.vline, ignoreBounds=True)
         self.addItem(self.hline, ignoreBounds=True)
 
-        self.value_text = TextItem('value: -', color=(255, 255, 255))
+        self.value_text = TextItem("value: -", color=(255, 255, 255))
         self.value_text.setParentItem(self)
 
     def mouseClickEvent(self, ev: MouseClickEvent):
         x, y = self.matrix_position(ev.scenePos())
 
         if self.valid_matrix_position(x, y):
-            self.cellClicked.emit(x,y)
+            self.cellClicked.emit(x, y)
 
         return super().mouseClickEvent(ev)
 
@@ -63,12 +100,16 @@ class MatrixView(ViewBox):
             if x < rows and y < cols:
                 self.value_text.setText(f"value: {self.matrix[x, y]}")
 
-        elif bounding_rect.x() <= pos.x() and \
-             bounding_rect.x() + bounding_rect.width() >= pos.x():
+        elif (
+            bounding_rect.x() <= pos.x()
+            and bounding_rect.x() + bounding_rect.width() >= pos.x()
+        ):
             self.hline.hide()
             self.vline.setPos(mousePoint.x())
-        elif bounding_rect.y() <= pos.y() and \
-             bounding_rect.y() + bounding_rect.height() >= pos.y():
+        elif (
+            bounding_rect.y() <= pos.y()
+            and bounding_rect.y() + bounding_rect.height() >= pos.y()
+        ):
             self.vline.hide()
             self.hline.setPos(mousePoint.y())
         else:
@@ -95,25 +136,25 @@ class MatrixView(ViewBox):
             self.matrix_image_item.setImage(self.matrix)
 
     def _set_image_and_retain_xrange(self):
-        x       = self.viewRect().x()
-        width   = self.viewRect().width()
+        x = self.viewRect().x()
+        width = self.viewRect().width()
 
         self.matrix_image_item.setImage(self.matrix)
 
-        self.setRange(xRange=(x, x+width))
+        self.setRange(xRange=(x, x + width))
 
     def move(self, percentage=0.2, dir=1):
-        x       = self.viewRect().x()
-        width   = self.viewRect().width()
+        x = self.viewRect().x()
+        width = self.viewRect().width()
 
-        change  = percentage * width * dir
+        change = percentage * width * dir
         x_range = (x + change, x + change + width)
 
         xmin, xmax = self.childrenBounds()[0]
         if x_range[0] < xmin:
-            x_range = (xmin, xmin+width)
+            x_range = (xmin, xmin + width)
         elif x_range[1] > xmax:
-            x_range = (xmax-width, xmax)
+            x_range = (xmax - width, xmax)
 
         self.setRange(xRange=x_range)
 
@@ -138,37 +179,68 @@ class MatrixHighlightView(MatrixView):
 
     # Highlight height can be from 1 to 3. Each row of the original matrix is repeated 3 times.
     # This procedure results in blazingly fast drawing
-    highlight_height = 1 
-    num_rows = 0
+    highlight_height = 1
 
-    def __init__(self, parent=None, border=None, lockAspect=False, enableMouse=True, invertY=True, enableMenu=False, name=None, invertX=False, defaultPadding=0, colormap=None, row_height = 3, highlight_height = 1, keep_range=True):
-        super().__init__(parent, border, lockAspect, enableMouse, invertY, enableMenu, name, invertX, defaultPadding, colormap, keep_range)
+    def __init__(
+        self,
+        parent=None,
+        border=None,
+        lockAspect=False,
+        enableMouse=True,
+        invertY=True,
+        enableMenu=False,
+        name=None,
+        invertX=False,
+        defaultPadding=0,
+        colormap=None,
+        keep_range=True,
+        row_height=3,
+        highlight_height=1,
+        color=(25, 237, 0),
+    ):
+        super().__init__(
+            parent,
+            border,
+            lockAspect,
+            enableMouse,
+            invertY,
+            enableMenu,
+            name,
+            invertX,
+            defaultPadding,
+            colormap,
+            keep_range,
+        )
 
-        self.row_height      = row_height
-        self.highlight_height   = highlight_height
+        self.color = color
+        self.row_height = row_height
+        self.highlight_height = highlight_height
 
-        self.highlight_item = ImageItem() # Colors for highlights will be black, white.
+        self.highlight_item = ImageItem()  # Colors for highlights will be black, white.
         self.addItem(self.highlight_item)
 
     def set_matrix(self, matrix):
-        self.num_rows = matrix.shape[1]
-        matrix = matrix.repeat(self.row_height, axis=1) # repeat axis 3 times such that highlights can be overlayed
+        self.n_cols, self.n_rows = matrix.shape
+        matrix = matrix.repeat(
+            self.row_height, axis=1
+        )  # repeat axis 3 times such that highlights can be overlayed
 
-        self.highlight_matrix = (np.ones(shape=matrix.shape) * 255)
+        # setup highlight colors
+        r, g, b = self.color
+        colors = np.array([r, g, b, 0])  # RGBA format
+        colors = colors[np.newaxis, :].repeat(self.n_cols, axis=0)
+        colors = colors[:, np.newaxis, :].repeat(self.n_rows * self.row_height, axis=1)
 
         # Make the highlight matrix use RGBA format
-        self.highlight_matrix = self.highlight_matrix[:, :, np.newaxis].repeat(4, axis=2) 
-
-        # Set alpha value to 0 for all pixels
-        self.highlight_matrix[:, :, 3] = 0 
-
+        self.highlight_matrix = colors
         self.highlight_matrix = self.highlight_matrix
         self.highlight_item.setImage(self.highlight_matrix)
 
+        # set matrix image
         super().set_matrix(matrix)
 
     def set_highlight(self, highlight_bitmap, row_index):
-        highlight_bitmap = highlight_bitmap * 60
-        self.highlight_matrix[:, (row_index*3) + 2, 3] = highlight_bitmap
+        highlight_bitmap = highlight_bitmap * 255
+        self.highlight_matrix[:, (row_index * 3) + 2, 3] = highlight_bitmap
         self.highlight_item.updateImage()
-        #self.highlight_item.setImage(self.highlight_matrix)
+        # self.highlight_item.setImage(self.highlight_matrix)

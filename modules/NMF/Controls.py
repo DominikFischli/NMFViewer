@@ -6,6 +6,7 @@ from PyQt6.QtWidgets import QWidget
 
 from functools import partial
 
+
 class ThresholdBox(QWidget):
     grid: QGridLayout
     matrix_view: MatrixHighlightView
@@ -16,7 +17,7 @@ class ThresholdBox(QWidget):
         super(ThresholdBox, self).__init__()
 
         self.grid = QVBoxLayout()
-        self.grid.setContentsMargins(1,1,1,1)
+        self.grid.setContentsMargins(1, 1, 1, 1)
         self.grid.setSpacing(0)
         self.setLayout(self.grid)
 
@@ -28,12 +29,12 @@ class ThresholdBox(QWidget):
         self._create_thresholds()
 
     def _create_thresholds(self):
-        num_rows = self.matrix_view.num_rows
+        n_rows = self.matrix_view.n_rows
         row_height = self.matrix_view.row_height
         matrix = self.matrix_view.matrix
-        for i in range(num_rows):
-            height = int(self.matrix_view.height() / num_rows)
-            threshold_slider = ThresholdSlider(matrix[:, i*row_height])
+        for i in range(n_rows):
+            height = int(self.matrix_view.height() / n_rows)
+            threshold_slider = ThresholdSlider(matrix[:, i * row_height])
             threshold_slider.setMaximumHeight(height)
             self.thresholds.append(threshold_slider)
 

@@ -1,100 +1,42 @@
-from PyQt6.QtCore import QSize, Qt
-from PyQt6.QtWidgets import QFileDialog, QListView, QWidget, QPushButton, QGridLayout, QWidget, QAbstractItemView
+from sklearn.preprocessing import normalize
+import numpy as np
+from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import (
+    QHBoxLayout,
+    QWidget,
+    QWidget,
+)
 from modules.NMF.NMFView import NMFView
-from modules.utils.FileUtils import load_matrix, find_nmf_folders, load_time_grades
-from modules.utils.DataUtils import transform_time_grades
-from modules.MatrixListModel import MatrixListModel
-import typing
+from modules.NMF.NMFTreeView import NMFFeatureMatrixItem, NMFModelItem
+from modules.NMF.Tabs.Tabs import Tabs
+
 
 class NMFWindow(QWidget):
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
 
-        self.setGeometry(800,600,600,800)
+        self.v_prime = False
+        self.v = None
 
-
-        self.path = ''
-        self.data_path = ''
         self.nmf_view = NMFView()
-
-        self.meta_model = MatrixListModel()
-        self.nmf_list_view = QListView()
-        self.nmf_list_view.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
-        self.nmf_list_view.setModel(self.meta_model)
-        self.nmf_list_view.setMaximumWidth(200)
-        self.nmf_list_view.setMaximumHeight(600)
-        self.nmf_list_view.selectionModel().currentRowChanged.connect(self.nmf_selected)
+        self.tabs = Tabs()
+        self.tabs.controls_tab.featureMatrixChanged.connect(
+            self._feature_matrix_selected
+        )
+        self.tabs.controls_tab.nmfModelChanged.connect(self._nmf_model_selected)
+        self.tabs.evaluation_tab.timeGradesChanged.connect(
+            self.nmf_view.set_time_grades
+        )
+        self.tabs.evaluation_tab.triggersChanged.connect(self.nmf_view.set_triggers)
+        self.tabs.evaluation_tab.toggleVPrime.connect(self._toggle_v_prime)
 
         self.init_ui()
 
     def init_ui(self):
-        self.load_time_grades_button = QPushButton('Load Time Grades (.csv) | (.h5)')
-        self.load_time_grades_button.clicked.connect(self.load_time_grades_clicked)
-
-        self.load_results_folder_button = QPushButton('Load NMF Results Folder')
-        self.load_results_folder_button.clicked.connect(self.load_results_folder_clicked)
-
-        self.hide_button = QPushButton('<')
-        self.hide_button.setMaximumSize(QSize(30,30))
-        self.hide_button.clicked.connect(self._hide_selection_list)
-
-        self.show_button = QPushButton('>')
-        self.show_button.setMaximumSize(QSize(30,30))
-        self.show_button.clicked.connect(self._show_selection_list)
-        self.show_button.hide()
-
-        self.load_line_length_button = QPushButton(text='Load Line Length Data')
-        self.load_line_length_button.setDisabled(True)
-        self.load_line_length_button.clicked.connect(self.load_line_length_clicked)
-
-        layout = QGridLayout()
-        layout.addWidget(self.hide_button, 0, 0)
-        layout.addWidget(self.show_button, 0, 0)
-        layout.addWidget(self.load_time_grades_button, 1, 0)
-        layout.addWidget(self.load_results_folder_button, 2, 0)
-
-        layout.addWidget(self.nmf_list_view, 4, 0)
-        layout.addWidget(self.load_line_length_button, 5, 0)
-
-        layout.addWidget(self.nmf_view, 0, 1, 10, 10)
+        layout = QHBoxLayout()
+        layout.addWidget(self.tabs)
+        layout.addWidget(self.nmf_view)
         self.setLayout(layout)
-
-    def _hide_selection_list(self):
-        self.load_time_grades_button.hide()
-        self.load_results_folder_button.hide()
-        self.nmf_list_view.hide()
-        self.load_line_length_button.hide()
-        self.hide_button.hide()
-        self.show_button.show()
-
-    def _show_selection_list(self):
-        self.load_time_grades_button.show()
-        self.load_results_folder_button.show()
-        self.nmf_list_view.show()
-        self.load_line_length_button.show()
-
-        self.show_button.hide()
-        self.hide_button.show()
-
-    def load_time_grades_clicked(self):
-        time_grades_path = QFileDialog.getOpenFileName(self, 'Load Time Grades', '.', '*.csv *.h5')[0]
-        time_grades = load_time_grades(time_grades_path)
-        self.nmf_view.set_time_grades(transform_time_grades(time_grades))
-
-    def load_results_folder_clicked(self):
-        dir_path = QFileDialog.getExistingDirectory()
-        self.meta_model.set_paths(find_nmf_folders(dir_path))
-
-    def load_line_length_clicked(self):
-        current_index = self.nmf_list_view.currentIndex()
-        meta = self.meta_model.getMeta(current_index)
-        self.nmf_view.set_line_length_matrix(load_matrix(meta.get_line_length_path()))
-
-    def nmf_selected(self, current_index, _):
-        meta = self.meta_model.getMeta(current_index)
-        self.nmf_view.set_h_matrix(load_matrix(meta.h_path))
-        self.nmf_view.set_w_matrix(load_matrix(meta.w_path))
-        self.load_line_length_button.setEnabled(True)
 
     def keyPressEvent(self, a0) -> None:
         if a0.key() == Qt.Key.Key_Right:
@@ -108,3 +50,36 @@ class NMFWindow(QWidget):
 
     def move_backward(self):
         self.nmf_view.move_backward()
+
+    def show_v_prime(self):
+        w = self.nmf_view.w_matrix()
+        h = self.nmf_view.h_matrix()
+        self.v = self.nmf_view.feature_matrix()
+        v_prime = np.abs(normalize(self.v) - w @ h)
+
+        self.nmf_view.set_feature_matrix(v_prime)
+
+    def show_v(self):
+        self.nmf_view.set_feature_matrix(self.v)
+
+    def _toggle_v_prime(self):
+        self.v_prime = not self.v_prime
+        self._update_feature_matrix()
+
+    def _update_feature_matrix(self):
+        if self.v_prime:
+            self.show_v_prime()
+        else:
+            self.show_v()
+
+    def _feature_matrix_selected(self, item: NMFFeatureMatrixItem):
+        self._feature_matrix_item = item
+        self.nmf_view.set_channel_names(item.load_channel_names())
+        self.v = item.load_feature_matrix()
+        self._update_feature_matrix()
+
+    def _nmf_model_selected(self, item: NMFModelItem):
+        w, h = item.load_nmf()
+
+        self.nmf_view.set_h_matrix(h)
+        self.nmf_view.set_w_matrix(w)
