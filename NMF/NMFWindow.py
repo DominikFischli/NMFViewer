@@ -1,17 +1,20 @@
-from sklearn.preprocessing import normalize
-import numpy as np
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
     QHBoxLayout,
     QWidget,
     QWidget,
 )
-from modules.NMF.NMFView import NMFView
-from modules.NMF.NMFTreeView import NMFFeatureMatrixItem, NMFModelItem
-from modules.NMF.Tabs.Tabs import Tabs
+
+import numpy as np
+
+from NMF.NMFView import NMFView
+from NMF.NMFTreeView import NMFFeatureMatrixItem, NMFModelItem
+from NMF.Tabs import Tabs
 
 
 class NMFWindow(QWidget):
+    cellClicked = pyqtSignal(float, str) # time, channel
+
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
 
@@ -19,6 +22,7 @@ class NMFWindow(QWidget):
         self.v = None
 
         self.nmf_view = NMFView()
+        self.nmf_view.cellClicked.connect(self.cellClicked.emit)
         self.tabs = Tabs()
         self.tabs.controls_tab.featureMatrixChanged.connect(
             self._feature_matrix_selected
@@ -55,7 +59,7 @@ class NMFWindow(QWidget):
         w = self.nmf_view.w_matrix()
         h = self.nmf_view.h_matrix()
         self.v = self.nmf_view.feature_matrix()
-        v_prime = np.abs(normalize(self.v) - w @ h)
+        v_prime = np.abs(self.v - w @ h)
 
         self.nmf_view.set_feature_matrix(v_prime)
 
@@ -75,6 +79,7 @@ class NMFWindow(QWidget):
     def _feature_matrix_selected(self, item: NMFFeatureMatrixItem):
         self._feature_matrix_item = item
         self.nmf_view.set_channel_names(item.load_channel_names())
+        self.nmf_view.feature_matrix_sampling_frequency = item.load_sfreq()
         self.v = item.load_feature_matrix()
         self._update_feature_matrix()
 

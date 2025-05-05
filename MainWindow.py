@@ -1,5 +1,5 @@
 from PyQt6.QtWidgets import QMainWindow
-from .NMFWindow import NMFWindow
+from NMF.NMFWindow import NMFWindow
 
 class MainWindow(QMainWindow):
     def __init__(self, parent=None):

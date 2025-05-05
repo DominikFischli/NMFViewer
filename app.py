@@ -1,5 +1,6 @@
 import sys
-from modules.MainWindow import MainWindow
+from MainWindow import MainWindow
+from pathlib import Path
 
 from PyQt6 import QtWidgets
 

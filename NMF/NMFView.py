@@ -1,8 +1,9 @@
-from sklearn.preprocessing import normalize
-from PyQt6.QtGui import QColor
+from PyQt6.QtGui import QBrush, QColor, QFont
 from PyQt6.QtWidgets import QGraphicsProxyWidget, QSizePolicy
+from pyqtgraph import TextItem
 from .Controls import ThresholdBox
 from .MatrixView import MatrixView, MatrixHighlightView, pyqtSignal
+from .FeatureMatrixView import FeatureMatrixView
 
 import numpy as np
 import pandas as pd
@@ -12,18 +13,19 @@ from pyqtgraph.functions import mkBrush
 
 
 class NMFView(GraphicsLayoutWidget):
-    timeClicked = pyqtSignal(int)
+    cellClicked = pyqtSignal(float, str) # time, channel
 
-    def __init__(self):
+    def __init__(self, feature_matrix_sampling_frequency=50):
         super().__init__()
 
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+
+        self._fm_sfreq = feature_matrix_sampling_frequency
 
         # Some Variables
         self.min_frame_size = 210
         self.max_x_range = 600
         self.rank_factor = 30
-        # self.cm = colormap.get("CET-L3")
         self.cm = colormap.get("CET-D1")
         self.setBackground("lightgrey")
 
@@ -48,7 +50,7 @@ class NMFView(GraphicsLayoutWidget):
         self.vbw.cellClicked.connect(self.w_cell_selected)
 
         # Line length Viewbox
-        self.vbfm: MatrixView = MatrixView(colormap=self.cm)
+        self.vbfm: FeatureMatrixView = FeatureMatrixView(colormap=self.cm)
         self.plot_ll = self.addPlot(row=1, col=1, viewBox=self.vbfm)
         self.plot_ll.hideAxis("left")
         self.plot_ll.showAxis("right")
@@ -64,7 +66,7 @@ class NMFView(GraphicsLayoutWidget):
         self.rank = 4
         self.time_points = 2000
         self.channels = 112
-        self.channel_names = ["random"] * self.channels
+        self.set_channel_names(["random"] * self.channels)
 
         # Add items to viewboxes
         self.vbh.set_matrix(np.random.normal(size=(self.time_points, self.rank)))
@@ -79,6 +81,14 @@ class NMFView(GraphicsLayoutWidget):
         self.addItem(self.proxy, row=0, col=0)
 
         self.update_dimensions()
+
+    @property
+    def feature_matrix_sampling_frequency(self):
+        return self._fm_sfreq
+
+    @feature_matrix_sampling_frequency.setter
+    def feature_matrix_sampling_frequency(self, value: int):
+        self._fm_freq = value
 
     def set_h_matrix(self, data):
         data = data.T
@@ -193,7 +203,8 @@ class NMFView(GraphicsLayoutWidget):
         # candidate_index = np.argmax(self.vbll.matrix[:, y])
         self.vbfm.center_x(x)
 
-    def fm_cell_selected(self, x, _):
-        time_clicked = x * (1024 / 50)
-        print(self.channel_names[_])
-        self.timeClicked.emit(time_clicked)
+    def fm_cell_selected(self, x, y):
+        time = x  / self.feature_matrix_sampling_frequency
+        channel = self.channel_names[y]
+        print(time, channel)
+        self.cellClicked.emit(time, channel)

@@ -49,6 +49,9 @@ class NMFFeatureMatrixItem(QStandardItem):
     def load_channel_names(self):
         return self.data.channel_names(self.feature_matrix)
 
+    def load_sfreq(self):
+        return self.data.sfreq(self.feature_matrix)
+
 
 class NMFModelItem(QStandardItem):
     def __init__(

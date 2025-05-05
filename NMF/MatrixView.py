@@ -5,23 +5,6 @@ from pyqtgraph.GraphicsScene.mouseEvents import MouseClickEvent
 import numpy as np
 
 
-class MatrixPlotItem(PlotItem):
-    def __init__(
-        self,
-        parent=None,
-        name=None,
-        labels=None,
-        title=None,
-        viewBox=None,
-        axisItems=None,
-        enableMenu=True,
-        **kargs,
-    ):
-        super().__init__(
-            parent, name, labels, title, viewBox, axisItems, enableMenu, **kargs
-        )
-
-
 class MatrixView(ViewBox):
     matrixSet = pyqtSignal()
     cellClicked = pyqtSignal(int, int)
@@ -63,12 +46,12 @@ class MatrixView(ViewBox):
         self.matrix_image_item = ImageItem(colorMap=colormap)
         self.addItem(self.matrix_image_item)
 
-        self.vline = InfiniteLine(angle=90, movable=False, pen="w")
-        self.hline = InfiniteLine(angle=0, movable=False, pen="w")
+        self.vline = InfiniteLine(angle=90, movable=False, pen="black")
+        self.hline = InfiniteLine(angle=0, movable=False, pen="black")
         self.addItem(self.vline, ignoreBounds=True)
         self.addItem(self.hline, ignoreBounds=True)
 
-        self.value_text = TextItem("value: -", color=(255, 255, 255))
+        self.value_text = TextItem("value: -", color=(0, 0, 0))
         self.value_text.setParentItem(self)
 
     def mouseClickEvent(self, ev: MouseClickEvent):

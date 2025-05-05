@@ -2,7 +2,7 @@ from PyQt6.QtWidgets import QSizePolicy, QVBoxLayout, QWidget, QPushButton, QFil
 from PyQt6.QtCore import pyqtSignal
 
 from PyQt6.QtCore import QModelIndex
-from modules.NMF.NMFTreeView import NMFFeatureMatrixItem, NMFModelItem, NMFTreeView
+from .NMFTreeView import NMFFeatureMatrixItem, NMFModelItem, NMFTreeView
 
 
 class ControlsTab(QWidget):

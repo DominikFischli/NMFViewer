@@ -6,8 +6,8 @@ import os
 
 import spidet.utils.h5_utils as h5
 
-from modules.utils.DataUtils import transform_time_grades, transform_triggers
-from modules.utils.FileUtils import load_time_grades
+from .utils.DataUtils import transform_time_grades, transform_triggers
+from .utils.FileUtils import load_time_grades
 
 
 class EvaluationTab(QWidget):
