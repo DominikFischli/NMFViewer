@@ -40,7 +40,7 @@ class NMFTreeView(QTreeView):
 class NMFFeatureMatrixItem(QStandardItem):
     def __init__(self, data: NMFData, feature_matrix: str) -> None:
         super().__init__(feature_matrix)
-        self.data = data
+        self.data: NMFData = data
         self.feature_matrix = feature_matrix
 
     def load_feature_matrix(self):
@@ -51,6 +51,9 @@ class NMFFeatureMatrixItem(QStandardItem):
 
     def load_sfreq(self):
         return self.data.sfreq(self.feature_matrix)
+
+    def load_start_timestamp(self):
+        return self.data.start_timestamp
 
 
 class NMFModelItem(QStandardItem):
