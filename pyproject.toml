@@ -3,7 +3,7 @@ requires = ["setuptools>=42", "wheel"]   # PEP 508 specifications.
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "NMF Viewer"
+name = "nmfViewer"
 version = "0.1.0"
 requires-python = ">= 3.11"
 description = "Python Application which enables users to quickly visualize NMF decomposition."
