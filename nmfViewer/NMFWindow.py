@@ -7,9 +7,9 @@ from PyQt6.QtWidgets import (
 
 import numpy as np
 
-from NMF.NMFView import NMFView
-from NMF.NMFTreeView import NMFFeatureMatrixItem, NMFModelItem
-from NMF.Tabs import Tabs
+from .NMFView import NMFView
+from .NMFTreeView import NMFFeatureMatrixItem, NMFModelItem
+from .Tabs import Tabs
 
 
 class NMFWindow(QWidget):

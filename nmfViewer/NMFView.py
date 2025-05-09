@@ -206,5 +206,4 @@ class NMFView(GraphicsLayoutWidget):
     def fm_cell_selected(self, x, y):
         time = x / self.feature_matrix_sampling_frequency
         channel = self.channel_names[y]
-        print(time, channel)
         self.cellClicked.emit(time, channel)
