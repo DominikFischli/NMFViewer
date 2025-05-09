@@ -1,6 +1,5 @@
-from PyQt6.QtGui import QBrush, QColor, QFont
+from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import QGraphicsProxyWidget, QSizePolicy
-from pyqtgraph import TextItem
 from .Controls import ThresholdBox
 from .MatrixView import MatrixView, MatrixHighlightView, pyqtSignal
 from .FeatureMatrixView import FeatureMatrixView
@@ -13,7 +12,7 @@ from pyqtgraph.functions import mkBrush
 
 
 class NMFView(GraphicsLayoutWidget):
-    cellClicked = pyqtSignal(float, str) # time, channel
+    cellClicked = pyqtSignal(float, str)  # time, channel
 
     def __init__(self, feature_matrix_sampling_frequency=50):
         super().__init__()
@@ -108,14 +107,15 @@ class NMFView(GraphicsLayoutWidget):
     def w_matrix(self):
         return self.vbw.matrix.T
 
-    def set_feature_matrix(self, data):
-        self.vbfm.set_matrix(data.T)
+    def set_feature_matrix(self, data, autolevels: bool | None = None):
+        self.vbfm.set_matrix(matrix=data.T, autolevels=autolevels)
 
     def feature_matrix(self):
         return self.vbfm.matrix.T
 
     def set_channel_names(self, channel_names):
         self.channel_names = channel_names
+        self.vbfm.channel_names = channel_names
 
     def set_time_grades(self, df: pd.DataFrame):
         for _index, row in df[df["Description"].str.startswith("IED")].iterrows():
@@ -129,8 +129,8 @@ class NMFView(GraphicsLayoutWidget):
             self.paint_area(
                 start,
                 stop,
-                brush_color=QColor(0, 0, 0, 10),
-                pen_color=QColor(0, 0, 0, 80),
+                brush_color=QColor(25, 237, 0, 10),
+                pen_color=QColor(25, 237, 0, 80),
             )
 
     def set_triggers(self, triggers: np.ndarray):
@@ -138,8 +138,8 @@ class NMFView(GraphicsLayoutWidget):
             self.paint_area(
                 start,
                 stop,
-                brush_color=QColor(0, 0, 0, 10),
-                pen_color=QColor(0, 0, 0, 80),
+                brush_color=QColor(133, 133, 133, 20),
+                pen_color=QColor(170, 170, 170, 80),
             )
 
     def update_dimensions(self):
@@ -204,7 +204,7 @@ class NMFView(GraphicsLayoutWidget):
         self.vbfm.center_x(x)
 
     def fm_cell_selected(self, x, y):
-        time = x  / self.feature_matrix_sampling_frequency
+        time = x / self.feature_matrix_sampling_frequency
         channel = self.channel_names[y]
         print(time, channel)
         self.cellClicked.emit(time, channel)

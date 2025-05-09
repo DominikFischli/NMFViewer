@@ -80,7 +80,7 @@ class MatrixView(ViewBox):
             y = int(mousePoint.y())
 
             rows, cols = self.matrix.shape
-            if x < rows and y < cols:
+            if x < rows and y < cols and x >= 0 and y >= 0:
                 self.value_text.setText(f"value: {self.matrix[x, y]}")
 
         elif (
@@ -107,22 +107,22 @@ class MatrixView(ViewBox):
         rows, cols = self.matrix.shape
         return x < rows and y < cols
 
-    def set_matrix(self, matrix):
+    def set_matrix(self, matrix, autolevels: bool | None = None):
         self.matrix = matrix
-        self.update_image()
+        self.update_image(autolevels=autolevels)
         self.matrixSet.emit()
 
-    def update_image(self):
+    def update_image(self, autolevels: bool | None = None):
         if self.keep_range and self.matrix_image_item.image is not None:
             self._set_image_and_retain_xrange()
         else:
-            self.matrix_image_item.setImage(self.matrix)
+            self.matrix_image_item.setImage(self.matrix, autoLevels=autolevels)
 
-    def _set_image_and_retain_xrange(self):
+    def _set_image_and_retain_xrange(self, autolevels: bool | None = None):
         x = self.viewRect().x()
         width = self.viewRect().width()
 
-        self.matrix_image_item.setImage(self.matrix)
+        self.matrix_image_item.setImage(self.matrix, autoLevels=autolevels)
 
         self.setRange(xRange=(x, x + width))
 

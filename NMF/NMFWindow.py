@@ -13,7 +13,7 @@ from NMF.Tabs import Tabs
 
 
 class NMFWindow(QWidget):
-    timeClicked = pyqtSignal(float, str) # time, channel
+    timeClicked = pyqtSignal(float, str)  # time, channel
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
@@ -63,7 +63,7 @@ class NMFWindow(QWidget):
         self.v = self.nmf_view.feature_matrix()
         v_prime = np.abs(self.v - w @ h)
 
-        self.nmf_view.set_feature_matrix(v_prime)
+        self.nmf_view.set_feature_matrix(v_prime, False)
 
     def show_v(self):
         self.nmf_view.set_feature_matrix(self.v)
@@ -90,7 +90,8 @@ class NMFWindow(QWidget):
         self._update_feature_matrix()
 
     def _nmf_model_selected(self, item: NMFModelItem):
-        w, h = item.load_nmf()
+        w = item.load_w()
+        h = item.load_h()
 
         self.nmf_view.set_h_matrix(h)
         self.nmf_view.set_w_matrix(w)

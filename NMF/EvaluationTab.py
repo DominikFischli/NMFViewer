@@ -48,13 +48,5 @@ class EvaluationTab(QWidget):
         self.toggleVPrime.emit()
 
     def _check_for_triggers(self, path):
-        trigs = h5.find_triggers(path)
-        if len(trigs) > 0:
-            duration = h5.duration(path)
-
-            start = np.maximum(0, trigs - 0.1)  # subtract 0.1s before trig
-            end = np.minimum(trigs + 1.0, duration)  # Add one second after trig
-
-            trigs = np.hstack([start[:, np.newaxis], end[:, np.newaxis]])
-
-            self.triggersChanged.emit(transform_triggers(trigs))
+        trigs = h5.detect_triggers(path)
+        self.triggersChanged.emit(trigs)
