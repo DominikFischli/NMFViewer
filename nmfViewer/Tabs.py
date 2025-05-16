@@ -1,8 +1,8 @@
 from PyQt6.QtWidgets import QTabWidget
 
-from .ControlsTab import ControlsTab
-from .MetricsTab import MetricsTab
-from .EvaluationTab import EvaluationTab
+from .tabs.ControlsTab import ControlsTab
+from .tabs.MetricsTab import MetricsTab
+from .tabs.EvaluationTab import EvaluationTab
 
 
 class Tabs(QTabWidget):

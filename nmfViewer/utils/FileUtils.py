@@ -18,15 +18,14 @@ def load_time_grades(filepath) -> pd.DataFrame:
 def load_from_h5(filepath) -> pd.DataFrame:
     recording = File(filepath)
 
-    description = recording["/time_grades/text"]
-    onset = recording["/time_grades/time"]
-    dur = recording["/time_grades/duration"]
+    with File(filepath) as recording:
+        description = recording["/time_grades/text"]
+        onset = recording["/time_grades/time"]
+        dur = recording["/time_grades/duration"]
 
-    time_grades = pd.DataFrame(
-        {"Description": description, "Onset": onset, "Duration": dur}
-    )
-    time_grades["Description"] = time_grades["Description"].str.decode("utf-8")
+        time_grades = pd.DataFrame(
+            {"Description": description, "Onset": onset, "Duration": dur}
+        )
+        time_grades["Description"] = time_grades["Description"].str.decode("utf-8")
 
-    recording.close()
-
-    return time_grades
+        return time_grades

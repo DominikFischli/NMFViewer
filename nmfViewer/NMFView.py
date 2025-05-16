@@ -1,14 +1,16 @@
 from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import QGraphicsProxyWidget, QSizePolicy
-from .Controls import ThresholdBox
-from .MatrixView import MatrixView, MatrixHighlightView, pyqtSignal
-from .FeatureMatrixView import FeatureMatrixView
+
+from pyqtgraph import GraphicsLayoutWidget, colormap, LinearRegionItem, mkPen
+from pyqtgraph.functions import mkBrush
 
 import numpy as np
 import pandas as pd
 
-from pyqtgraph import GraphicsLayoutWidget, colormap, LinearRegionItem, mkPen
-from pyqtgraph.functions import mkBrush
+from .utils.DataUtils import transform_time_grades, transform_triggers
+from .nmf_view.ThresholdBox import ThresholdBox
+from .nmf_view.MatrixView import MatrixView, MatrixHighlightView, pyqtSignal
+from .nmf_view.FeatureMatrixView import FeatureMatrixView
 
 
 class NMFView(GraphicsLayoutWidget):
@@ -18,15 +20,18 @@ class NMFView(GraphicsLayoutWidget):
         super().__init__()
 
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-
         self._fm_sfreq = feature_matrix_sampling_frequency
 
-        # Some Variables
+        # Display parameters
         self.min_frame_size = 210
         self.max_x_range = 600
         self.rank_factor = 30
         self.cm = colormap.get("CET-D1")
         self.setBackground("lightgrey")
+
+        # Tracking triggers and time grades
+        self.trigger_regions = []
+        self.time_grade_regions = []
 
         # Setup viewboxes
         #
@@ -50,9 +55,9 @@ class NMFView(GraphicsLayoutWidget):
 
         # Line length Viewbox
         self.vbfm: FeatureMatrixView = FeatureMatrixView(colormap=self.cm)
-        self.plot_ll = self.addPlot(row=1, col=1, viewBox=self.vbfm)
-        self.plot_ll.hideAxis("left")
-        self.plot_ll.showAxis("right")
+        self.plot_fm = self.addPlot(row=1, col=1, viewBox=self.vbfm)
+        self.plot_fm.hideAxis("left")
+        self.plot_fm.showAxis("right")
         self.vbfm.setMouseEnabled(x=True, y=False)
         self.vbfm.connect_scene_events()
         self.vbfm.cellClicked.connect(self.fm_cell_selected)
@@ -118,29 +123,29 @@ class NMFView(GraphicsLayoutWidget):
         self.vbfm.channel_names = channel_names
 
     def set_time_grades(self, df: pd.DataFrame):
+        df = transform_time_grades(df, self.feature_matrix_sampling_frequency)
         for _index, row in df[df["Description"].str.startswith("IED")].iterrows():
             start = row["Onset"]
             stop = start + row["Duration"]
-            self.paint_area(start, stop)
+            self.paint_region(
+                start=start,
+                stop=stop,
+                brush_color=QColor(25, 237, 0, 10),
+                pen_color=QColor(25, 237, 0, 80),
+                region_list=self.time_grade_regions,
+            )
 
         for _index, row in df[df["Description"] == "NOISY"].iterrows():
             start = row["Onset"]
             stop = start + row["Duration"]
-            self.paint_area(
-                start,
-                stop,
-                brush_color=QColor(25, 237, 0, 10),
-                pen_color=QColor(25, 237, 0, 80),
+            self.paint_region(
+                start=start, stop=stop, region_list=self.time_grade_regions
             )
 
     def set_triggers(self, triggers: np.ndarray):
+        triggers = transform_triggers(triggers, self.feature_matrix_sampling_frequency)
         for start, stop in triggers:
-            self.paint_area(
-                start,
-                stop,
-                brush_color=QColor(133, 133, 133, 20),
-                pen_color=QColor(170, 170, 170, 80),
-            )
+            self.paint_region(start=start, stop=stop, region_list=self.trigger_regions)
 
     def update_dimensions(self):
         new_max = max(self.min_frame_size, self.rank * self.rank_factor)
@@ -156,20 +161,29 @@ class NMFView(GraphicsLayoutWidget):
         self.proxy.setMaximumWidth(new_max)
         self.proxy.setMaximumHeight(new_max)
 
-    def paint_area(self, start, stop, brush_color=None, pen_color=None):
-        if brush_color is None:
-            brush_color = QColor(255, 255, 255, 10)
-        if pen_color is None:
-            pen_color = QColor(255, 255, 255, 80)
-
+    def paint_region(
+        self,
+        start,
+        stop,
+        brush_color=QColor(255, 255, 255, 10),
+        pen_color=(255, 255, 255, 80),
+        region_list=[],
+    ):
         brush = mkBrush(brush_color)
         pen = mkPen(pen_color, width=10)
-        self.plot_h.addItem(
-            LinearRegionItem((start, stop), movable=False, brush=brush, pen=pen)
-        )
-        self.plot_ll.addItem(
-            LinearRegionItem((start, stop), movable=False, brush=brush, pen=pen)
-        )
+
+        h_region = LinearRegionItem((start, stop), movable=False, brush=brush, pen=pen)
+        fm_region = LinearRegionItem((start, stop), movable=False, brush=brush, pen=pen)
+
+        self.plot_h.addItem(h_region)
+        self.plot_fm.addItem(fm_region)
+
+        region_list.append(h_region)
+        region_list.append(fm_region)
+
+    def remove_region(self, region):
+        self.plot_h.removeItem(region)
+        self.plot_fm.removeItem(region)
 
     def move_forward(self, percentage=0.2):
         self.vbh.move_forward(percentage)
@@ -207,3 +221,37 @@ class NMFView(GraphicsLayoutWidget):
         time = x / self.feature_matrix_sampling_frequency
         channel = self.channel_names[y]
         self.cellClicked.emit(time, channel)
+
+    def show_value(self, visible: bool = True) -> None:
+        self.vbfm.show_value = visible
+        self.vbh.show_value = visible
+        self.vbw.show_value = visible
+        self.repaint()
+
+    def show_crosshair(self, visible: bool = True) -> None:
+        self.vbfm.show_crosshair = visible
+        self.vbh.show_crosshair = visible
+        self.vbw.show_crosshair = visible
+        self.repaint()
+
+    def show_channel_info(self, visible: bool = True) -> None:
+        self.vbfm.show_info = visible
+        self.repaint()
+
+    def show_time_grades(self, visible: bool = True) -> None:
+        for region in self.time_grade_regions:
+            region.setVisible(visible)
+
+    def show_triggers(self, visible: bool = True) -> None:
+        for region in self.trigger_regions:
+            region.setVisible(visible)
+
+    def clear_time_grades(self) -> None:
+        for region in self.time_grade_regions:
+            self.remove_region(region)
+        self.time_grade_regions.clear()
+
+    def clear_triggers(self) -> None:
+        for region in self.trigger_regions:
+            self.remove_region(region)
+        self.trigger_regions.clear()

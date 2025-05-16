@@ -34,23 +34,35 @@ class FeatureMatrixView(MatrixView):
             keep_range,
         )
 
+        self.show_info = True
         self.channel_names = None
         self.info_panel = TextItem("info", color=(0, 0, 0))
         self.addItem(self.info_panel)
         self.info_panel.hide()
 
+    @property
+    def show_info(self) -> bool:
+        return self._show_info
+
+    @show_info.setter
+    def show_info(self, visible: bool) -> None:
+        self._show_info = visible
+
+        if not visible:
+            self.info_panel.hide()
+
     @override
     def _on_mouse_moved(self, pos):
         super()._on_mouse_moved(pos)
+        if self.show_info:
+            self._update_info_panel(pos)
 
-        self.info_panel.hide()
-
+    def _update_info_panel(self, pos):
         if not self.channel_names:
             return
 
         bounding_rect = self.sceneBoundingRect()
-
-        if bounding_rect.contains(pos):
+        if bounding_rect.contains(pos) and self.show_info:
             offset = QPointF(10, 0)
             text_width = self.info_panel.boundingRect().width()
 
@@ -66,6 +78,5 @@ class FeatureMatrixView(MatrixView):
             text_pos = self.mapSceneToView(pos + offset)
             self.info_panel.show()
             self.info_panel.setPos(text_pos)
-
-            self.width()
-            self.height()
+        else:
+            self.info_panel.hide()
