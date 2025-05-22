@@ -17,9 +17,9 @@ class NMFFeatureMatrixItem(QStandardItem):
 
 
 class NMFModelItem(QStandardItem):
-    def __init__(self, model: NMFModel) -> None:
-        super().__init__(model.name)
-        self.model = model
+    def __init__(self, nmf: NMFModel) -> None:
+        super().__init__(nmf.name)
+        self.nmf = nmf
 
 
 class NMFTreeView(QTreeView):

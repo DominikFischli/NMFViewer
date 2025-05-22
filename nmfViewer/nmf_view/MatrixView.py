@@ -28,7 +28,7 @@ class MatrixView(ViewBox):
         name=None,
         invertX=False,
         defaultPadding=0.0,
-        colormap=None,
+        colormap="CET-L17",
         keep_range=True,
     ):
         super().__init__(

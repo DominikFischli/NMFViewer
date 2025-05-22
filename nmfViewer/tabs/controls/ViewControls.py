@@ -1,14 +1,14 @@
 from PyQt6.QtCore import pyqtSignal
-from PyQt6.QtWidgets import QCheckBox, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QCheckBox, QGroupBox, QVBoxLayout
 
 
-class ViewControls(QWidget):
+class ViewControls(QGroupBox):
     show_crosshair = pyqtSignal(bool)
     show_channel_info = pyqtSignal(bool)
     show_value = pyqtSignal(bool)
 
     def __init__(self, parent=None) -> None:
-        super().__init__(parent)
+        super().__init__(parent, title="Display")
 
         self._init_ui()
 
