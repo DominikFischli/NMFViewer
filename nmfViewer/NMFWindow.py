@@ -70,11 +70,13 @@ class NMFWindow(QWidget):
         h = self.nmf_view.h_matrix()
         v_prime = np.abs(self.feature_matrix_group.feature_matrix - w @ h)
 
-        self.nmf_view.set_feature_matrix(v_prime, False)
+        self.nmf_view.set_feature_matrix(v_prime, self.start_time, False)
 
     def show_v(self):
         if self.feature_matrix_group:
-            self.nmf_view.set_feature_matrix(self.feature_matrix_group.feature_matrix)
+            self.nmf_view.set_feature_matrix(
+                self.feature_matrix_group.feature_matrix, self.start_time
+            )
 
     def _update_feature_matrix(self, show_v_prime: bool = False):
         if show_v_prime:
