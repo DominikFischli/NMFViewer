@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nmfViewer"
-version = "0.1.5"
+version = "0.1.6"
 requires-python = ">= 3.11"
 description = "Python Application which enables users to quickly visualize NMF decomposition."
 readme = "README.md"
