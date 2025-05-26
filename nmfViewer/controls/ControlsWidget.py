@@ -1,11 +1,11 @@
 from PyQt6.QtWidgets import QSizePolicy, QVBoxLayout, QWidget, QPushButton, QFileDialog
 from PyQt6.QtCore import pyqtSignal
 
-from .controls.ViewControls import ViewControls
-from .controls.NMFTreeView import NMFFeatureMatrixItem, NMFModelItem, NMFTreeView
+from .ViewControls import ViewControls
+from .NMFTreeView import NMFFeatureMatrixItem, NMFModelItem, NMFTreeView
 
 
-class ControlsTab(QWidget):
+class ControlsWidget(QWidget):
     featureMatrixChanged = pyqtSignal(NMFFeatureMatrixItem)
     nmfModelChanged = pyqtSignal(NMFModelItem)
     show_value = pyqtSignal(bool)

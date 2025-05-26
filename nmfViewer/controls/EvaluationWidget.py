@@ -7,12 +7,9 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QFileDialog,
 )
-import os
-
-import spidet.utils.h5_utils as h5
 
 
-class EvaluationTab(QWidget):
+class EvaluationWidget(QWidget):
     newTimeGradePath = pyqtSignal(str)
     newTriggersPath = pyqtSignal(str)
 

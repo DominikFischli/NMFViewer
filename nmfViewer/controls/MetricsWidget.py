@@ -7,12 +7,11 @@ from pyqtgraph.imageview.ImageView import ImageView
 from spidet.save.nmf_data import NMFMetrics
 
 
-class MetricsTab(QScrollArea):
+class MetricsWidget(QGroupBox):
     def __init__(self, parent=None) -> None:
-        super().__init__(parent)
+        super().__init__(parent, title="Metrics")
 
         self.layout: QVBoxLayout = QVBoxLayout()
-        self.layout.addStretch()
         self.layout.setDirection(QVBoxLayout.Direction.BottomToTop)
         self.setLayout(self.layout)
 
@@ -53,7 +52,6 @@ class MetricsTab(QScrollArea):
         box = QGroupBox(title=f"{name}:")
         layout = QVBoxLayout()
         layout.addWidget(imv)
-        layout.insertStretch(-1)
         box.setLayout(layout)
 
         self.layout.addWidget(box)

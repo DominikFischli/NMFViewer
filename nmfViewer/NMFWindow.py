@@ -11,8 +11,8 @@ from spidet.utils.h5_utils import detect_triggers
 
 from .utils.FileUtils import load_time_grades
 from .NMFView import NMFView
-from .tabs.controls.NMFTreeView import NMFFeatureMatrixItem, NMFModelItem
-from .Tabs import Tabs
+from .controls.NMFTreeView import NMFFeatureMatrixItem, NMFModelItem
+from .controls.Tabs import Tabs
 
 
 class NMFWindow(QWidget):
@@ -26,14 +26,16 @@ class NMFWindow(QWidget):
         self.nmf_view = NMFView()
         self.nmf_view.cellClicked.connect(self._on_cell_clicked)
         self.tabs = Tabs()
-        controls_tab = self.tabs.controls_tab
+        self.feature_matrix_group = None
+
+        controls_tab = self.tabs.controls_widget
         controls_tab.featureMatrixChanged.connect(self._on_feature_matrix_selected)
         controls_tab.nmfModelChanged.connect(self._on_nmf_model_selected)
         controls_tab.show_value.connect(self._on_show_value_checked)
         controls_tab.show_crosshair.connect(self._on_show_crosshair_checked)
         controls_tab.show_channel_info.connect(self._on_show_channel_info_checked)
 
-        evaluation_tab = self.tabs.evaluation_tab
+        evaluation_tab = self.tabs.evaluation_widget
         evaluation_tab.newTriggersPath.connect(self._on_new_triggers_path)
         evaluation_tab.newTimeGradePath.connect(self._on_new_time_grade_path)
         evaluation_tab.clearTriggers.connect(self.nmf_view.clear_triggers)
@@ -95,7 +97,7 @@ class NMFWindow(QWidget):
         if len(trigs) == 0:
             return
 
-        self.tabs.evaluation_tab.show_triggers.setChecked(True)
+        self.tabs.evaluation_widget.show_triggers.setChecked(True)
         self.nmf_view.set_triggers(trigs)
 
     def _on_new_time_grade_path(self, path):
@@ -103,7 +105,7 @@ class NMFWindow(QWidget):
         if time_grades.empty:
             return
 
-        self.tabs.evaluation_tab.show_time_grades.setChecked(True)
+        self.tabs.evaluation_widget.show_time_grades.setChecked(True)
         self.nmf_view.set_time_grades(time_grades)
 
     def _on_feature_matrix_selected(self, item: NMFFeatureMatrixItem):
@@ -120,7 +122,8 @@ class NMFWindow(QWidget):
 
         self.nmf_view.set_h_matrix(self.nmf.h)
         self.nmf_view.set_w_matrix(self.nmf.w)
-        self.tabs.metrics_tab.set_metrics(self.nmf.metrics())
+        self.tabs.metrics_widget.set_metrics(self.nmf.metrics())
+        self._update_feature_matrix()
 
     def _on_show_value_checked(self, show: bool) -> None:
         self.nmf_view.show_value(show)
