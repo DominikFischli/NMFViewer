@@ -1,3 +1,4 @@
+from typing import override
 from PyQt6.QtCore import pyqtSignal
 
 from pyqtgraph import TextItem, ViewBox, ImageItem, InfiniteLine
@@ -9,11 +10,8 @@ class MatrixView(ViewBox):
     matrixSet = pyqtSignal()
     cellClicked = pyqtSignal(int, int)
 
-    matrix = None
     matrix_image_item = None
     keep_range = True
-
-    hide_rows = []
 
     value_text = None
 
@@ -44,6 +42,7 @@ class MatrixView(ViewBox):
         )
 
         self.keep_range = keep_range
+        self.autoLevels = True
 
         self.matrix_image_item = ImageItem(colorMap=colormap)
         self.addItem(self.matrix_image_item)
@@ -58,6 +57,18 @@ class MatrixView(ViewBox):
 
         self.show_crosshair = True
         self.show_value = True
+
+        self._matrix = np.array([])
+
+    @property
+    def matrix(self) -> np.ndarray:
+        return self._matrix
+
+    @matrix.setter
+    def matrix(self, data) -> None:
+        self._matrix = data
+        self._update_image()
+        self.matrixSet.emit()
 
     @property
     def show_value(self) -> bool:
@@ -83,36 +94,39 @@ class MatrixView(ViewBox):
             self.hline.hide()
 
     def mouseClickEvent(self, ev: MouseClickEvent):
-        x, y = self.matrix_position(ev.scenePos())
+        x, y = self._matrix_position(ev.scenePos())
 
-        if self.valid_matrix_position(x, y):
+        if self._valid_matrix_position(x, y):
             self.cellClicked.emit(x, y)
 
         return super().mouseClickEvent(ev)
 
-    def connect_scene_events(self):
+    def move_forward(self, percentage=0.2):
+        self._move(percentage)
+
+    def move_backward(self, percentage=0.2):
+        self._move(percentage, -1)
+
+    def center_x(self, x):
+        width = self.viewRect().width()
+
+        new_x = x - width // 2
+        x_range = (new_x, new_x + width)
+
+        self.setRange(xRange=x_range)
+
+    def _connect_scene_events(self):
         self.scene().sigMouseMoved.connect(self._on_mouse_moved)
 
-    def matrix_position(self, scenePos):
+    def _matrix_position(self, scenePos):
         pos = self.mapSceneToView(scenePos)
         return int(pos.x()), int(pos.y())
 
-    def valid_matrix_position(self, x, y):
-        rows, cols = self.matrix.shape
+    def _valid_matrix_position(self, x, y):
+        rows, cols = self._matrix.shape
         return x < rows and y < cols and x >= 0 and y >= 0
 
-    def set_matrix(self, matrix, autolevels: bool | None = None):
-        self.matrix = matrix
-        self._update_image(autolevels=autolevels)
-        self.matrixSet.emit()
-
-    def _update_image(self, autolevels: bool | None = None):
-        if self.keep_range and self.matrix_image_item.image is not None:
-            self._set_image_and_retain_xrange()
-        else:
-            self._set_image(autolevels=autolevels)
-
-    def move(self, percentage=0.2, dir=1):
+    def _move(self, percentage=0.2, dir=1):
         x = self.viewRect().x()
         width = self.viewRect().width()
 
@@ -124,20 +138,6 @@ class MatrixView(ViewBox):
             x_range = (xmin, xmin + width)
         elif x_range[1] > xmax:
             x_range = (xmax - width, xmax)
-
-        self.setRange(xRange=x_range)
-
-    def move_forward(self, percentage=0.2):
-        self.move(percentage)
-
-    def move_backward(self, percentage=0.2):
-        self.move(percentage, -1)
-
-    def center_x(self, x):
-        width = self.viewRect().width()
-
-        new_x = x - width // 2
-        x_range = (new_x, new_x + width)
 
         self.setRange(xRange=x_range)
 
@@ -154,13 +154,19 @@ class MatrixView(ViewBox):
         else:
             self.value_text.hide()
 
+    def _update_image(self):
+        if self.keep_range and self.matrix_image_item.image is not None:
+            self._set_image_and_retain_xrange()
+        else:
+            self._set_image()
+
     def _update_value(self, pos):
         mousePoint = self.mapSceneToView(pos)
         x = int(mousePoint.x())
         y = int(mousePoint.y())
 
-        if self.valid_matrix_position(x, y):
-            self.value_text.setText(f"value: {self.matrix[x, y]:1.2}")
+        if self._valid_matrix_position(x, y):
+            self.value_text.setText(f"value: {self._matrix[x, y]:1.2}")
         else:
             self.value_text.setText(f"value: -")
 
@@ -171,7 +177,7 @@ class MatrixView(ViewBox):
         bounding_rect = self.sceneBoundingRect()
         mousePoint = self.mapSceneToView(pos)
 
-        if self.show_crosshair and self.valid_matrix_position(
+        if self.show_crosshair and self._valid_matrix_position(
             mousePoint.x(), mousePoint.y()
         ):
             self.vline.setPos(mousePoint.x())
@@ -192,18 +198,16 @@ class MatrixView(ViewBox):
             self.vline.hide()
             self.hline.hide()
 
-    def _set_image_and_retain_xrange(self, autolevels: bool | None = None):
+    def _set_image_and_retain_xrange(self):
         x = self.viewRect().x()
         width = self.viewRect().width()
 
-        self._set_image(autolevels=autolevels)
+        self._set_image()
 
         self.setRange(xRange=(x, x + width))
 
-    def _set_image(self, autolevels: bool | None = None):
-        self.matrix_image_item.setImage(
-            np.delete(self.matrix, self.hide_rows, axis=0), autoLevels=autolevels
-        )
+    def _set_image(self):
+        self.matrix_image_item.setImage(self._matrix, autoLevels=self.autoLevels)
 
 
 class MatrixHighlightView(MatrixView):
@@ -252,11 +256,19 @@ class MatrixHighlightView(MatrixView):
         self.highlight_item = ImageItem()  # Colors for highlights will be black, white.
         self.addItem(self.highlight_item)
 
-    def set_matrix(self, matrix):
-        self.n_cols, self.n_rows = matrix.shape
-        matrix = matrix.repeat(
+    @property
+    def matrix(self) -> np.ndarray:
+        # return original data matrix
+        return self._matrix[:, :: self.row_height]
+
+    @matrix.setter
+    def matrix(self, data) -> None:
+        self.n_cols, self.n_rows = data.shape
+
+        data = data.repeat(
             self.row_height, axis=1
         )  # repeat axis 3 times such that highlights can be overlayed
+        # use axis=1 because of the way pyqtgraph interprets matrix data
 
         # setup highlight colors
         r, g, b = self.color
@@ -270,10 +282,11 @@ class MatrixHighlightView(MatrixView):
         self.highlight_item.setImage(self.highlight_matrix)
 
         # set matrix image
-        super().set_matrix(matrix)
+        self._matrix = data
+        self._update_image()
+        self.matrixSet.emit()
 
-    def set_highlight(self, highlight_bitmap, row_index):
+    def set_highlight(self, highlight_bitmap: np.ndarray, row_index: int):
         highlight_bitmap = highlight_bitmap * 255
         self.highlight_matrix[:, (row_index * 3) + 2, 3] = highlight_bitmap
         self.highlight_item.updateImage()
-        # self.highlight_item.setImage(self.highlight_matrix)

@@ -22,7 +22,6 @@ class NMFWindow(QWidget):
         super().__init__(parent)
 
         self.start_time = 0
-
         self.nmf_view = NMFView()
         self.nmf_view.cellClicked.connect(self._on_cell_clicked)
         self.tabs = Tabs()
@@ -46,45 +45,43 @@ class NMFWindow(QWidget):
 
         self._init_ui()
 
+    def keyPressEvent(self, a0) -> None:
+        if a0.key() == Qt.Key.Key_Right:
+            self.nmf_view.move_forward()
+        elif a0.key() == Qt.Key.Key_Left:
+            self.nmf_view.move_backward()
+        return super().keyPressEvent(a0)
+
     def _init_ui(self):
         layout = QHBoxLayout()
         layout.addWidget(self.tabs)
         layout.addWidget(self.nmf_view)
         self.setLayout(layout)
 
-    def keyPressEvent(self, a0) -> None:
-        if a0.key() == Qt.Key.Key_Right:
-            self.move_forward()
-        elif a0.key() == Qt.Key.Key_Left:
-            self.move_backward()
-        return super().keyPressEvent(a0)
-
-    def move_forward(self):
-        self.nmf_view.move_forward()
-
-    def move_backward(self):
-        self.nmf_view.move_backward()
-
-    def show_v_prime(self):
+    def _show_v_prime(self):
         if not self.feature_matrix_group:
             return
         w = self.nmf_view.w_matrix()
         h = self.nmf_view.h_matrix()
         v_prime = np.abs(self.feature_matrix_group.feature_matrix - w @ h)
 
-        self.nmf_view.set_feature_matrix(v_prime, self.start_time, False)
+        self.nmf_view.set_feature_matrix(
+            data=v_prime, start_timestamp=self.start_time, autoLevels=False
+        )
 
-    def show_v(self):
+    def _show_v(self):
         if self.feature_matrix_group:
             self.nmf_view.set_feature_matrix(
-                self.feature_matrix_group.feature_matrix, self.start_time
+                data=self.feature_matrix_group.feature_matrix,
+                start_timestamp=self.start_time,
+                autoLevels=True,
             )
 
     def _update_feature_matrix(self, show_v_prime: bool = False):
         if show_v_prime:
-            self.show_v_prime()
+            self._show_v_prime()
         else:
-            self.show_v()
+            self._show_v()
 
     def _on_cell_clicked(self, time, channel):
         self.timeClicked.emit(int(time + self.start_time), channel)
@@ -115,6 +112,7 @@ class NMFWindow(QWidget):
             self.feature_matrix_group.sfreq
         )
         self.start_time = item.start_timestamp
+        self.tabs.evaluation_widget.toggle_v_prime_button.setChecked(False)
         self._update_feature_matrix()
 
     def _on_nmf_model_selected(self, item: NMFModelItem):

@@ -28,13 +28,12 @@ class ThresholdBox(QWidget):
         self._create_thresholds()
 
     def _create_thresholds(self):
-        n_rows = self.matrix_view.n_rows
-        row_height = self.matrix_view.row_height
         matrix = self.matrix_view.matrix
-        for i in range(n_rows):
-            height = int(self.matrix_view.height() / n_rows)
-            threshold_slider = ThresholdSlider(matrix[:, i * row_height])
-            threshold_slider.setMaximumHeight(height)
+        rank = self.matrix_view.matrix.shape[1]
+        max_height = int(self.matrix_view.height() / rank)
+        for i in range(rank):
+            threshold_slider = ThresholdSlider(matrix[:, i])
+            threshold_slider.setMaximumHeight(max_height)
             self.thresholds.append(threshold_slider)
 
             threshold_slider.newEvents.connect(partial(self._on_new_threshold, i))

@@ -106,7 +106,7 @@ class NMFView(GraphicsLayoutWidget):
         self.plot_h.hideAxis("left")
         self.plot_h.hideAxis("bottom")
         self.plot_h.showAxis("right")
-        self.vbh.connect_scene_events()
+        self.vbh._connect_scene_events()
 
         # W Viewbox
         self.vbw: MatrixView = MatrixView(
@@ -114,7 +114,7 @@ class NMFView(GraphicsLayoutWidget):
         )
         self.plot_w = self.addPlot(row=1, col=0, viewBox=self.vbw)
         self.plot_w.hideAxis("left")
-        self.vbw.connect_scene_events()
+        self.vbw._connect_scene_events()
         self.vbw.cellClicked.connect(self.w_cell_selected)
 
         # Line length Viewbox
@@ -128,7 +128,7 @@ class NMFView(GraphicsLayoutWidget):
         )
         self.plot_fm.hideAxis("left")
         self.vbfm.setMouseEnabled(x=True, y=False)
-        self.vbfm.connect_scene_events()
+        self.vbfm._connect_scene_events()
         self.vbfm.cellClicked.connect(self.fm_cell_selected)
 
         # link axis
@@ -142,9 +142,9 @@ class NMFView(GraphicsLayoutWidget):
         self.set_channel_names(["random"] * self.channels)
 
         # Add items to viewboxes
-        self.vbh.set_matrix(np.random.normal(size=(self.time_points, self.rank)))
-        self.vbw.set_matrix(np.random.normal(size=(self.rank, self.channels)))
-        self.vbfm.set_matrix(np.random.normal(size=(self.time_points, self.channels)))
+        self.vbh.matrix = np.random.normal(size=(self.time_points, self.rank))
+        self.vbw.matrix = np.random.normal(size=(self.rank, self.channels))
+        self.vbfm.matrix = np.random.normal(size=(self.time_points, self.channels))
 
         # Add Control box for H thresholds
         self.control_box = ThresholdBox(self.vbh)
@@ -168,25 +168,24 @@ class NMFView(GraphicsLayoutWidget):
         self.time_points, self.rank = data.shape
 
         self.update_dimensions()
-        self.vbh.set_matrix(data)
+        self.vbh.matrix = data
 
     def h_matrix(self):
-        return self.vbh.matrix.T[::3, :]
+        return self.vbh.matrix.T
 
     def set_w_matrix(self, data):
         data = data.T
         self.channels = data.shape[0]
-        self.vbw.set_matrix(data)
+        self.vbw.matrix = data
 
     def w_matrix(self):
         return self.vbw.matrix.T
 
-    def set_feature_matrix(
-        self, data, start_timestamp=0, autolevels: bool | None = None
-    ):
+    def set_feature_matrix(self, data, start_timestamp=0, autoLevels=False):
         self.time_axis.start_timestamp = start_timestamp
         self.time_axis.sfreq = self.feature_matrix_sampling_frequency
-        self.vbfm.set_matrix(matrix=data.T, autolevels=autolevels)
+        self.vbfm.autoLevels = autoLevels
+        self.vbfm.matrix = data.T
 
     def feature_matrix(self):
         return self.vbfm.matrix.T

@@ -71,7 +71,7 @@ class FeatureMatrixView(MatrixView):
             if pos.x() > bounding_rect.x() + bounding_rect.width() // 2:
                 offset.setX(-text_width)
 
-            _, y = self.matrix_position(pos)
+            _, y = self._matrix_position(pos)
             y = min(y, len(self.channel_names) - 1)
             self.info_panel.setText(self.channel_names[y])
 
