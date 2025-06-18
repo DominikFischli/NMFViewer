@@ -7,13 +7,28 @@ import numpy as np
 
 
 class MatrixView(ViewBox):
+    """
+    This class holds and displays matrix data. Needs to be added to a `pyqtgraph` plot.
+
+    Attributes
+    ----------
+    matrixSet : pyqtSignal
+        This signal is emitted whenever the matrix has been set.
+    cellClicked : pyqtSignal(int, int)
+        This signal emits (x, y) coordinates on a mouse click
+    autoLevels : bool
+        This property determines if, when a new matrix is set, levels will be automatically calculated
+        based on the matrix values.
+
+    """
+
     matrixSet = pyqtSignal()
     cellClicked = pyqtSignal(int, int)
 
-    matrix_image_item = None
-    keep_range = True
+    _matrix_image_item = None
+    _keep_range = True
 
-    value_text = None
+    _value_text = None
 
     def __init__(
         self,
@@ -41,22 +56,22 @@ class MatrixView(ViewBox):
             defaultPadding,
         )
 
-        self.keep_range = keep_range
-        self.autoLevels = True
+        self._keep_range = keep_range
 
-        self.matrix_image_item = ImageItem(colorMap=colormap)
-        self.addItem(self.matrix_image_item)
+        self._matrix_image_item = ImageItem(colorMap=colormap)
+        self.addItem(self._matrix_image_item)
 
-        self.vline = InfiniteLine(angle=90, movable=False, pen="black")
-        self.hline = InfiniteLine(angle=0, movable=False, pen="black")
-        self.addItem(self.vline, ignoreBounds=True)
-        self.addItem(self.hline, ignoreBounds=True)
+        self._vline = InfiniteLine(angle=90, movable=False, pen="black")
+        self._hline = InfiniteLine(angle=0, movable=False, pen="black")
+        self.addItem(self._vline, ignoreBounds=True)
+        self.addItem(self._hline, ignoreBounds=True)
 
-        self.value_text = TextItem("value: -", color=(0, 0, 0))
-        self.value_text.setParentItem(self)
+        self._value_text = TextItem("value: -", color=(0, 0, 0))
+        self._value_text.setParentItem(self)
 
         self.show_crosshair = True
         self.show_value = True
+        self.autoLevels = True
 
         self._matrix = np.array([])
 
@@ -79,7 +94,7 @@ class MatrixView(ViewBox):
         self._show_value = visible
 
         if not visible:
-            self.value_text.hide()
+            self._value_text.hide()
 
     @property
     def show_crosshair(self) -> bool:
@@ -90,8 +105,8 @@ class MatrixView(ViewBox):
         self._show_crosshair = visible
 
         if not visible:
-            self.vline.hide()
-            self.hline.hide()
+            self._vline.hide()
+            self._hline.hide()
 
     def mouseClickEvent(self, ev: MouseClickEvent):
         x, y = self._matrix_position(ev.scenePos())
@@ -145,17 +160,17 @@ class MatrixView(ViewBox):
         if self.show_crosshair:
             self._update_crosshair(pos)
         else:
-            self.vline.hide()
-            self.hline.hide()
+            self._vline.hide()
+            self._hline.hide()
 
         if self.show_value:
             self._update_value(pos)
-            self.value_text.show()
+            self._value_text.show()
         else:
-            self.value_text.hide()
+            self._value_text.hide()
 
     def _update_image(self):
-        if self.keep_range and self.matrix_image_item.image is not None:
+        if self._keep_range and self._matrix_image_item.image is not None:
             self._set_image_and_retain_xrange()
         else:
             self._set_image()
@@ -166,13 +181,13 @@ class MatrixView(ViewBox):
         y = int(mousePoint.y())
 
         if self._valid_matrix_position(x, y):
-            self.value_text.setText(f"value: {self._matrix[x, y]:1.2}")
+            self._value_text.setText(f"value: {self._matrix[x, y]:1.2}")
         else:
-            self.value_text.setText(f"value: -")
+            self._value_text.setText(f"value: -")
 
     def _update_crosshair(self, pos):
-        self.vline.show()
-        self.hline.show()
+        self._vline.show()
+        self._hline.show()
 
         bounding_rect = self.sceneBoundingRect()
         mousePoint = self.mapSceneToView(pos)
@@ -180,23 +195,23 @@ class MatrixView(ViewBox):
         if self.show_crosshair and self._valid_matrix_position(
             mousePoint.x(), mousePoint.y()
         ):
-            self.vline.setPos(mousePoint.x())
-            self.hline.setPos(mousePoint.y())
+            self._vline.setPos(mousePoint.x())
+            self._hline.setPos(mousePoint.y())
         elif (
             bounding_rect.x() <= pos.x()
             and bounding_rect.x() + bounding_rect.width() >= pos.x()
         ):
-            self.hline.hide()
-            self.vline.setPos(mousePoint.x())
+            self._hline.hide()
+            self._vline.setPos(mousePoint.x())
         elif (
             bounding_rect.y() <= pos.y()
             and bounding_rect.y() + bounding_rect.height() >= pos.y()
         ):
-            self.vline.hide()
-            self.hline.setPos(mousePoint.y())
+            self._vline.hide()
+            self._hline.setPos(mousePoint.y())
         else:
-            self.vline.hide()
-            self.hline.hide()
+            self._vline.hide()
+            self._hline.hide()
 
     def _set_image_and_retain_xrange(self):
         x = self.viewRect().x()
@@ -207,7 +222,7 @@ class MatrixView(ViewBox):
         self.setRange(xRange=(x, x + width))
 
     def _set_image(self):
-        self.matrix_image_item.setImage(self._matrix, autoLevels=self.autoLevels)
+        self._matrix_image_item.setImage(self._matrix, autoLevels=self.autoLevels)
 
 
 class MatrixHighlightView(MatrixView):

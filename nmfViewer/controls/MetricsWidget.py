@@ -8,6 +8,13 @@ from spidet.save.nmf_data import NMFMetrics
 
 
 class MetricsWidget(QGroupBox):
+    """
+    This widget loads and displays the metrics contained in a given NMFMetrics.
+    For each individual value, a row with (name: value) is created.
+    For each dataset, a ImageView is created where the values are displayed in image form.
+
+    """
+
     def __init__(self, parent=None) -> None:
         super().__init__(parent, title="Metrics")
 

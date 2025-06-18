@@ -3,17 +3,27 @@ from PyQt6.QtWidgets import QSlider
 
 
 class DoubleSlider(QSlider):
+    """
+    This class provides a graphical slider capable of handling float values.
+
+    Attributes
+    ----------
+    doubleValueChanged : pyqtSignal
+        This signal is emitted whenever the value is changed.
+
+    """
+
     # create our our signal that we can connect to if necessary
     doubleValueChanged = pyqtSignal(float)
 
     def __init__(self, decimals=4, *args, **kargs):
-        super(DoubleSlider, self).__init__( *args, **kargs)
-        self._multi = 10 ** decimals
+        super(DoubleSlider, self).__init__(*args, **kargs)
+        self._multi = 10**decimals
 
         self.valueChanged.connect(self.emitDoubleValueChanged)
 
     def emitDoubleValueChanged(self):
-        value = float(super(DoubleSlider, self).value())/self._multi
+        value = float(super(DoubleSlider, self).value()) / self._multi
         self.doubleValueChanged.emit(value)
 
     def value(self):

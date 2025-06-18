@@ -6,6 +6,19 @@ from .MatrixView import MatrixView
 
 
 class FeatureMatrixView(MatrixView):
+    """
+    An extension to the matrix view which allows for channel names (row names) to be set.
+    They will be displayed in an info panel next to the cursor if show_info is True.
+
+    Attributes
+    ----------
+    show_info : bool
+        Property determining whether channel names should be displayed
+    channel_names : List[str]
+        Channel names. Needs to correspond in size to the number of rows on the displayed matrix.
+
+    """
+
     def __init__(
         self,
         parent=None,
@@ -36,9 +49,9 @@ class FeatureMatrixView(MatrixView):
 
         self.show_info = True
         self.channel_names = None
-        self.info_panel = TextItem("info", color=(0, 0, 0))
-        self.addItem(self.info_panel)
-        self.info_panel.hide()
+        self._info_panel = TextItem("info", color=(0, 0, 0))
+        self.addItem(self._info_panel)
+        self._info_panel.hide()
 
     @property
     def show_info(self) -> bool:
@@ -49,7 +62,7 @@ class FeatureMatrixView(MatrixView):
         self._show_info = visible
 
         if not visible:
-            self.info_panel.hide()
+            self._info_panel.hide()
 
     @override
     def _on_mouse_moved(self, pos):
@@ -64,7 +77,7 @@ class FeatureMatrixView(MatrixView):
         bounding_rect = self.sceneBoundingRect()
         if bounding_rect.contains(pos) and self.show_info:
             offset = QPointF(10, 0)
-            text_width = self.info_panel.boundingRect().width()
+            text_width = self._info_panel.boundingRect().width()
 
             if pos.y() > bounding_rect.y() + bounding_rect.height() // 2:
                 offset.setY(-20)
@@ -73,10 +86,10 @@ class FeatureMatrixView(MatrixView):
 
             _, y = self._matrix_position(pos)
             y = min(y, len(self.channel_names) - 1)
-            self.info_panel.setText(self.channel_names[y])
+            self._info_panel.setText(self.channel_names[y])
 
             text_pos = self.mapSceneToView(pos + offset)
-            self.info_panel.show()
-            self.info_panel.setPos(text_pos)
+            self._info_panel.show()
+            self._info_panel.setPos(text_pos)
         else:
-            self.info_panel.hide()
+            self._info_panel.hide()

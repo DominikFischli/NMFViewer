@@ -10,6 +10,10 @@ from PyQt6.QtWidgets import (
 
 
 class EvaluationWidget(QWidget):
+    """
+    This widget contains the buttons which allow the user to load and clear time grades and triggers.
+    """
+
     newTimeGradePath = pyqtSignal(str)
     newTriggersPath = pyqtSignal(str)
 

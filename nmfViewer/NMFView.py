@@ -78,6 +78,31 @@ class ConstantDateAxisItem(DateAxisItem):
 
 
 class NMFView(GraphicsLayoutWidget):
+    """
+    This widget contains the views displaying a specified NMF result and its
+    feature matrix and a threshold box, which allows the user to set threshold
+    levels for each individual h row using sliders.
+
+    The display results must be set, otherwise random data is displayed.
+
+    Attributes
+    ----------
+    cellClicked : pyqtSignal(float, str)
+        Emits the time and channel of the cursor position after the
+        user clicked a cell in the feature matrix.
+    min_frame_size : int
+        The minimum width/height for each of the four frames.
+    rank_factor : int
+        The maximum amount of pixels allocated for each rank.
+        Used to determine the maximum width/height of the viewboxes for W/H.
+    cm : Colormap
+        Colormap used to draw the matrices.
+    feature_matrix_sampling_frequency : property(int)
+        The sampling frequency of the feature matrix.
+        Required for setting the correct time axis.
+
+    """
+
     cellClicked = pyqtSignal(float, str)  # time, channel
 
     def __init__(self, feature_matrix_sampling_frequency=50):
@@ -88,72 +113,71 @@ class NMFView(GraphicsLayoutWidget):
 
         # Display parameters
         self.min_frame_size = 210
-        self.max_x_range = 600
         self.rank_factor = 30
         self.cm = colormap.get("CET-D1")
         self.setBackground("lightgrey")
 
         # Tracking triggers and time grades
-        self.trigger_regions = []
-        self.time_grade_regions = []
+        self._trigger_regions = []
+        self._time_grade_regions = []
 
         # Setup viewboxes
         #
         # H Viewbox
-        self.vbh: MatrixView = MatrixHighlightView(colormap=self.cm)
-        self.vbh.setMouseEnabled(x=True, y=False)
-        self.plot_h = self.addPlot(row=0, col=1, viewBox=self.vbh)
-        self.plot_h.hideAxis("left")
-        self.plot_h.hideAxis("bottom")
-        self.plot_h.showAxis("right")
-        self.vbh._connect_scene_events()
+        self._vbh: MatrixView = MatrixHighlightView(colormap=self.cm)
+        self._vbh.setMouseEnabled(x=True, y=False)
+        self._plot_h = self.addPlot(row=0, col=1, viewBox=self._vbh)
+        self._plot_h.hideAxis("left")
+        self._plot_h.hideAxis("bottom")
+        self._plot_h.showAxis("right")
+        self._vbh._connect_scene_events()
 
         # W Viewbox
-        self.vbw: MatrixView = MatrixView(
+        self._vbw: MatrixView = MatrixView(
             enableMouse=False, colormap=self.cm, keep_range=False
         )
-        self.plot_w = self.addPlot(row=1, col=0, viewBox=self.vbw)
-        self.plot_w.hideAxis("left")
-        self.vbw._connect_scene_events()
-        self.vbw.cellClicked.connect(self.w_cell_selected)
+        self._plot_w = self.addPlot(row=1, col=0, viewBox=self._vbw)
+        self._plot_w.hideAxis("left")
+        self._vbw._connect_scene_events()
+        self._vbw.cellClicked.connect(self._w_cell_selected)
 
         # Line length Viewbox
-        self.time_axis = ConstantDateAxisItem()
-        self.vbfm: FeatureMatrixView = FeatureMatrixView(colormap=self.cm)
-        self.plot_fm = self.addPlot(
+        self._time_axis = ConstantDateAxisItem()
+        self._vbfm: FeatureMatrixView = FeatureMatrixView(colormap=self.cm)
+        self._plot_fm = self.addPlot(
             row=1,
             col=1,
-            viewBox=self.vbfm,
-            axisItems={"bottom": self.time_axis},
+            viewBox=self._vbfm,
+            axisItems={"bottom": self._time_axis},
         )
-        self.plot_fm.hideAxis("left")
-        self.vbfm.setMouseEnabled(x=True, y=False)
-        self.vbfm._connect_scene_events()
-        self.vbfm.cellClicked.connect(self.fm_cell_selected)
+        self._plot_fm.hideAxis("left")
+        self._vbfm.setMouseEnabled(x=True, y=False)
+        self._vbfm._connect_scene_events()
+        self._vbfm.cellClicked.connect(self._fm_cell_selected)
 
         # link axis
-        self.vbfm.setXLink(self.vbh)
-        self.vbfm.setYLink(self.vbw)
+        self._vbfm.setXLink(self._vbh)
+        self._vbfm.setYLink(self._vbw)
 
         # Fill items with dummy data
-        self.rank = 4
-        self.time_points = 2000
-        self.channels = 112
-        self.set_channel_names(["random"] * self.channels)
+        self._rank = 4
+        self._time_points = 2000
+        self._channels = 112
+        self.set_channel_names(["random"] * self._channels)
 
         # Add items to viewboxes
-        self.vbh.matrix = np.random.normal(size=(self.time_points, self.rank))
-        self.vbw.matrix = np.random.normal(size=(self.rank, self.channels))
-        self.vbfm.matrix = np.random.normal(size=(self.time_points, self.channels))
+        self._vbh.matrix = np.random.normal(size=(self._time_points, self._rank))
+        self._vbw.matrix = np.random.normal(size=(self._rank, self._channels))
+        self._vbfm.matrix = np.random.normal(size=(self._time_points, self._channels))
 
         # Add Control box for H thresholds
-        self.control_box = ThresholdBox(self.vbh)
-        self.proxy = QGraphicsProxyWidget()
-        self.proxy.setWidget(self.control_box)
-        self.proxy.setContentsMargins(0, 0, 0, 0)
-        self.addItem(self.proxy, row=0, col=0)
+        self._control_box = ThresholdBox(self._vbh)
+        self._proxy = QGraphicsProxyWidget()
+        self._proxy.setWidget(self._control_box)
+        self._proxy.setContentsMargins(0, 0, 0, 0)
+        self.addItem(self._proxy, row=0, col=0)
 
-        self.update_dimensions()
+        self._update_dimensions()
 
     @property
     def feature_matrix_sampling_frequency(self):
@@ -163,107 +187,145 @@ class NMFView(GraphicsLayoutWidget):
     def feature_matrix_sampling_frequency(self, value: int):
         self._fm_freq = value
 
-    def set_h_matrix(self, data):
+    def set_h_matrix(self, data: np.ndarray) -> None:
         data = data.T
-        self.time_points, self.rank = data.shape
+        self._time_points, self._rank = data.shape
 
-        self.update_dimensions()
-        self.vbh.matrix = data
+        self._update_dimensions()
+        self._vbh.matrix = data
 
-    def h_matrix(self):
-        return self.vbh.matrix.T
+    def h_matrix(self) -> np.ndarray:
+        return self._vbh.matrix.T
 
-    def set_w_matrix(self, data):
+    def set_w_matrix(self, data: np.ndarray) -> None:
         data = data.T
-        self.channels = data.shape[0]
-        self.vbw.matrix = data
+        self._channels = data.shape[0]
+        self._vbw.matrix = data
 
-    def w_matrix(self):
-        return self.vbw.matrix.T
+    def w_matrix(self) -> np.ndarray:
+        return self._vbw.matrix.T
 
-    def set_feature_matrix(self, data, start_timestamp=0, autoLevels=False):
-        self.time_axis.start_timestamp = start_timestamp
-        self.time_axis.sfreq = self.feature_matrix_sampling_frequency
-        self.vbfm.autoLevels = autoLevels
-        self.vbfm.matrix = data.T
+    def set_feature_matrix(
+        self, data: np.ndarray, start_timestamp=0, autoLevels=False
+    ) -> None:
+        self._time_axis.start_timestamp = start_timestamp
+        self._time_axis.sfreq = self.feature_matrix_sampling_frequency
+        self._vbfm.autoLevels = autoLevels
+        self._vbfm.matrix = data.T
 
-    def feature_matrix(self):
-        return self.vbfm.matrix.T
+    def feature_matrix(self) -> np.ndarray:
+        return self._vbfm.matrix.T
 
-    def set_channel_names(self, channel_names):
-        self.channel_names = channel_names
-        self.vbfm.channel_names = channel_names
+    def set_channel_names(self, channel_names: list) -> None:
+        self._channel_names = channel_names
+        self._vbfm.channel_names = channel_names
 
-    def set_time_grades(self, df: pd.DataFrame):
+    def set_time_grades(self, df: pd.DataFrame) -> None:
         df = transform_time_grades(df, self.feature_matrix_sampling_frequency)
         for _index, row in df[df["Description"].str.startswith("IED")].iterrows():
             start = row["Onset"]
             stop = start + row["Duration"]
-            self.paint_region(
+            self._paint_region(
                 start=start,
                 stop=stop,
                 brush_color=QColor(25, 237, 0, 10),
                 pen_color=QColor(25, 237, 0, 80),
-                region_list=self.time_grade_regions,
+                region_list=self._time_grade_regions,
             )
 
         for _index, row in df[df["Description"] == "NOISY"].iterrows():
             start = row["Onset"]
             stop = start + row["Duration"]
-            self.paint_region(
-                start=start, stop=stop, region_list=self.time_grade_regions
+            self._paint_region(
+                start=start, stop=stop, region_list=self._time_grade_regions
             )
 
-    def set_triggers(self, triggers: np.ndarray):
+    def set_triggers(self, triggers: np.ndarray) -> None:
         triggers = transform_triggers(triggers, self.feature_matrix_sampling_frequency)
         for start, stop in triggers:
-            self.paint_region(start=start, stop=stop, region_list=self.trigger_regions)
+            self._paint_region(
+                start=start, stop=stop, region_list=self._trigger_regions
+            )
 
-    def update_dimensions(self):
-        new_max = max(self.min_frame_size, self.rank * self.rank_factor)
+    def show_value(self, visible: bool = True) -> None:
+        self._vbfm.show_value = visible
+        self._vbh.show_value = visible
+        self._vbw.show_value = visible
+        self.repaint()
+
+    def show_crosshair(self, visible: bool = True) -> None:
+        self._vbfm.show_crosshair = visible
+        self._vbh.show_crosshair = visible
+        self._vbw.show_crosshair = visible
+        self.repaint()
+
+    def show_channel_info(self, visible: bool = True) -> None:
+        self._vbfm.show_info = visible
+        self.repaint()
+
+    def show_time_grades(self, visible: bool = True) -> None:
+        for region in self._time_grade_regions:
+            region.setVisible(visible)
+
+    def show_triggers(self, visible: bool = True) -> None:
+        for region in self._trigger_regions:
+            region.setVisible(visible)
+
+    def clear_time_grades(self) -> None:
+        for region in self._time_grade_regions:
+            self._remove_region(region)
+        self._time_grade_regions.clear()
+
+    def clear_triggers(self) -> None:
+        for region in self._trigger_regions:
+            self._remove_region(region)
+        self._trigger_regions.clear()
+
+    def move_forward(self, percentage=0.2) -> None:
+        self._vbh.move_forward(percentage)
+
+    def move_backward(self, percentage=0.2) -> None:
+        self._vbh.move_backward(percentage)
+
+    def _update_dimensions(self) -> None:
+        new_max = max(self.min_frame_size, self._rank * self.rank_factor)
 
         # Set max width on W and max height on H
-        self.plot_w.setMaximumWidth(new_max)
-        self.plot_h.setMaximumHeight(new_max)
+        self._plot_w.setMaximumWidth(new_max)
+        self._plot_h.setMaximumHeight(new_max)
 
-        self.vbw.setMaximumWidth(new_max)
-        self.vbh.setMaximumHeight(new_max)
+        self._vbw.setMaximumWidth(new_max)
+        self._vbh.setMaximumHeight(new_max)
 
         # adjust the graphics proxy accordingly
-        self.proxy.setMaximumWidth(new_max)
-        self.proxy.setMaximumHeight(new_max)
+        self._proxy.setMaximumWidth(new_max)
+        self._proxy.setMaximumHeight(new_max)
 
-    def paint_region(
+    def _paint_region(
         self,
         start,
         stop,
         brush_color=QColor(255, 255, 255, 10),
         pen_color=(255, 255, 255, 80),
         region_list=[],
-    ):
+    ) -> None:
         brush = mkBrush(brush_color)
         pen = mkPen(pen_color, width=10)
 
         h_region = LinearRegionItem((start, stop), movable=False, brush=brush, pen=pen)
         fm_region = LinearRegionItem((start, stop), movable=False, brush=brush, pen=pen)
 
-        self.plot_h.addItem(h_region)
-        self.plot_fm.addItem(fm_region)
+        self._plot_h.addItem(h_region)
+        self._plot_fm.addItem(fm_region)
 
         region_list.append(h_region)
         region_list.append(fm_region)
 
-    def remove_region(self, region):
-        self.plot_h.removeItem(region)
-        self.plot_fm.removeItem(region)
+    def _remove_region(self, region) -> None:
+        self._plot_h.removeItem(region)
+        self._plot_fm.removeItem(region)
 
-    def move_forward(self, percentage=0.2):
-        self.vbh.move_forward(percentage)
-
-    def move_backward(self, percentage=0.2):
-        self.vbh.move_backward(percentage)
-
-    def w_cell_selected(self, x, y):
+    def _w_cell_selected(self, x, y) -> None:
         # Move view to center the highest value of the line length matrix
         # for which the w value multiplied with the corresponding h value contribute the most
 
@@ -271,8 +333,8 @@ class NMFView(GraphicsLayoutWidget):
         # as in h_xi * w_ij contribute the most to ll_xi
 
         # channel = i, h_row, w_col = j
-        h_row = self.vbh.matrix[:, x]
-        ll_row = self.vbfm.matrix[:, y]
+        h_row = self._vbh.matrix[:, x]
+        ll_row = self._vbfm.matrix[:, y]
 
         # get 100 largest ll_row values
         ll_desc_index = np.flip(np.argsort(ll_row))[:100]
@@ -287,43 +349,9 @@ class NMFView(GraphicsLayoutWidget):
         x = ll_desc_index[candidate_index]
 
         # candidate_index = np.argmax(self.vbll.matrix[:, y])
-        self.vbfm.center_x(x)
+        self._vbfm.center_x(x)
 
-    def fm_cell_selected(self, x, y):
+    def _fm_cell_selected(self, x, y) -> None:
         time = x / self.feature_matrix_sampling_frequency
-        channel = self.channel_names[y]
+        channel = self._channel_names[y]
         self.cellClicked.emit(time, channel)
-
-    def show_value(self, visible: bool = True) -> None:
-        self.vbfm.show_value = visible
-        self.vbh.show_value = visible
-        self.vbw.show_value = visible
-        self.repaint()
-
-    def show_crosshair(self, visible: bool = True) -> None:
-        self.vbfm.show_crosshair = visible
-        self.vbh.show_crosshair = visible
-        self.vbw.show_crosshair = visible
-        self.repaint()
-
-    def show_channel_info(self, visible: bool = True) -> None:
-        self.vbfm.show_info = visible
-        self.repaint()
-
-    def show_time_grades(self, visible: bool = True) -> None:
-        for region in self.time_grade_regions:
-            region.setVisible(visible)
-
-    def show_triggers(self, visible: bool = True) -> None:
-        for region in self.trigger_regions:
-            region.setVisible(visible)
-
-    def clear_time_grades(self) -> None:
-        for region in self.time_grade_regions:
-            self.remove_region(region)
-        self.time_grade_regions.clear()
-
-    def clear_triggers(self) -> None:
-        for region in self.trigger_regions:
-            self.remove_region(region)
-        self.trigger_regions.clear()

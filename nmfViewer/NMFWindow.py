@@ -16,6 +16,19 @@ from .controls.Tabs import Tabs
 
 
 class NMFWindow(QWidget):
+    """
+    A self contained window offering all features of the NMF Viewer.
+    Can be included in a PyQt application like any other widget.
+
+    Attributes
+    ----------
+    timeClicked : pyqtSignal(int, str)
+        Emits (row, channel) corresponding to mouse position.
+        Emitted when the user clicked on a cell in the feature matrix.
+
+
+    """
+
     timeClicked = pyqtSignal(int, str)  # time, channel
 
     def __init__(self, parent=None) -> None:
