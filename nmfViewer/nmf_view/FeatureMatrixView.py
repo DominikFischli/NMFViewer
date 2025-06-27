@@ -1,8 +1,75 @@
 from typing import override
 
+from datetime import datetime
+
 from PyQt6.QtCore import QPointF
+
 from pyqtgraph import TextItem
+from pyqtgraph import DateAxisItem
+
 from .MatrixView import MatrixView
+
+
+class ConstantDateAxisItem(DateAxisItem):
+    """
+    A custom DateAxisItem that formats tick labels as UTC date and time strings.
+
+    This class extends the pyqtgraph DateAxisItem to provide custom formatting for
+    the x-axis ticks, ensuring that the displayed dates and times are in UTC.
+    """
+
+    def __init__(
+        self, start_timestamp=0, sfreq=1, orientation="bottom", utcOffset=None, **kwargs
+    ):
+        super().__init__(orientation, utcOffset, **kwargs)
+
+        self.start_timestamp = start_timestamp
+        self.sfreq = sfreq
+
+    def tickStrings(self, values, scale, spacing):
+        """
+        Generates formatted tick strings for the given timestamp values.
+
+        Args:
+            values (list): A list of timestamp values (in seconds) for which to generate tick strings.
+            scale (float): The scale factor for the axis.
+            spacing (float): The spacing between ticks.
+
+        Returns:
+            list: A list of formatted date and time strings corresponding to the input timestamp values.
+
+        This method retrieves the appropriate tick specifications based on the current zoom level
+        and formats each timestamp into a string according to the specified format. It handles
+        potential errors that may arise from invalid timestamp values and ensures that the output
+        is in UTC.
+        """
+        tickSpecs = self.zoomLevel.tickSpecs
+        tickSpec = next((s for s in tickSpecs if s.spacing == spacing), None)
+        try:
+            dates = [
+                datetime.utcfromtimestamp(v / self.sfreq + self.start_timestamp)
+                for v in values
+            ]
+        except (OverflowError, ValueError, OSError):
+            # should not normally happen
+            return ["%g" % (v // SEC_PER_YEAR + 1970) for v in values]
+
+        formatStrings = []
+        for x in dates:
+            try:
+                if "%f" in tickSpec.format:
+                    (dt, micro) = x.strftime("%H:%M:%S.%f").split(".")
+                    s = "%s.%01d" % (dt, int(micro) / 1000)
+                elif "%Y" in tickSpec.format:
+                    s = x.strftime(tickSpec.format)
+                    s = s.lstrip("0")
+                else:
+                    s = x.strftime(tickSpec.format)
+                formatStrings.append(s)
+            except ValueError:  # Windows can't handle dates before 1970
+                print("value error: Windows can't handle dates before 1970")
+                formatStrings.append("")
+        return formatStrings
 
 
 class FeatureMatrixView(MatrixView):

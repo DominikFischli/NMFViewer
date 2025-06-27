@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import QGridLayout, QVBoxLayout
 from .threshold_slider.ThresholdSlider import ThresholdSlider
-from .MatrixView import MatrixHighlightView
+from .MatrixHighlightView import MatrixHighlightView
 from PyQt6.QtWidgets import QWidget
 
 from functools import partial

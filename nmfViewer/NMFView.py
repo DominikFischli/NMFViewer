@@ -3,78 +3,15 @@ from PyQt6.QtWidgets import QGraphicsProxyWidget, QSizePolicy
 
 from pyqtgraph import GraphicsLayoutWidget, colormap, LinearRegionItem, mkPen
 from pyqtgraph.functions import mkBrush
-from pyqtgraph import DateAxisItem
 
 import numpy as np
 import pandas as pd
-from datetime import datetime
 
 from .utils.DataUtils import transform_time_grades, transform_triggers
 from .nmf_view.ThresholdBox import ThresholdBox
-from .nmf_view.MatrixView import MatrixView, MatrixHighlightView, pyqtSignal
-from .nmf_view.FeatureMatrixView import FeatureMatrixView
-
-
-class ConstantDateAxisItem(DateAxisItem):
-    """
-    A custom DateAxisItem that formats tick labels as UTC date and time strings.
-
-    This class extends the pyqtgraph DateAxisItem to provide custom formatting for
-    the x-axis ticks, ensuring that the displayed dates and times are in UTC.
-    """
-
-    def __init__(
-        self, start_timestamp=0, sfreq=1, orientation="bottom", utcOffset=None, **kwargs
-    ):
-        super().__init__(orientation, utcOffset, **kwargs)
-
-        self.start_timestamp = start_timestamp
-        self.sfreq = sfreq
-
-    def tickStrings(self, values, scale, spacing):
-        """
-        Generates formatted tick strings for the given timestamp values.
-
-        Args:
-            values (list): A list of timestamp values (in seconds) for which to generate tick strings.
-            scale (float): The scale factor for the axis.
-            spacing (float): The spacing between ticks.
-
-        Returns:
-            list: A list of formatted date and time strings corresponding to the input timestamp values.
-
-        This method retrieves the appropriate tick specifications based on the current zoom level
-        and formats each timestamp into a string according to the specified format. It handles
-        potential errors that may arise from invalid timestamp values and ensures that the output
-        is in UTC.
-        """
-        tickSpecs = self.zoomLevel.tickSpecs
-        tickSpec = next((s for s in tickSpecs if s.spacing == spacing), None)
-        try:
-            dates = [
-                datetime.utcfromtimestamp(v / self.sfreq + self.start_timestamp)
-                for v in values
-            ]
-        except (OverflowError, ValueError, OSError):
-            # should not normally happen
-            return ["%g" % (v // SEC_PER_YEAR + 1970) for v in values]
-
-        formatStrings = []
-        for x in dates:
-            try:
-                if "%f" in tickSpec.format:
-                    (dt, micro) = x.strftime("%H:%M:%S.%f").split(".")
-                    s = "%s.%01d" % (dt, int(micro) / 1000)
-                elif "%Y" in tickSpec.format:
-                    s = x.strftime(tickSpec.format)
-                    s = s.lstrip("0")
-                else:
-                    s = x.strftime(tickSpec.format)
-                formatStrings.append(s)
-            except ValueError:  # Windows can't handle dates before 1970
-                print("value error: Windows can't handle dates before 1970")
-                formatStrings.append("")
-        return formatStrings
+from .nmf_view.MatrixView import MatrixView, pyqtSignal
+from .nmf_view.MatrixHighlightView import MatrixHighlightView
+from .nmf_view.FeatureMatrixView import FeatureMatrixView, ConstantDateAxisItem
 
 
 class NMFView(GraphicsLayoutWidget):
@@ -124,12 +61,15 @@ class NMFView(GraphicsLayoutWidget):
         # Setup viewboxes
         #
         # H Viewbox
-        self._vbh: MatrixView = MatrixHighlightView(colormap=self.cm)
+        row_height = 3
+        self._vbh: MatrixView = MatrixHighlightView(
+            row_height=row_height, colormap=self.cm
+        )
         self._vbh.setMouseEnabled(x=True, y=False)
         self._plot_h = self.addPlot(row=0, col=1, viewBox=self._vbh)
+        self._plot_h.showAxis("right")
         self._plot_h.hideAxis("left")
         self._plot_h.hideAxis("bottom")
-        self._plot_h.showAxis("right")
         self._vbh._connect_scene_events()
 
         # W Viewbox
@@ -137,6 +77,7 @@ class NMFView(GraphicsLayoutWidget):
             enableMouse=False, colormap=self.cm, keep_range=False
         )
         self._plot_w = self.addPlot(row=1, col=0, viewBox=self._vbw)
+        self._plot_w.showAxis("bottom")
         self._plot_w.hideAxis("left")
         self._vbw._connect_scene_events()
         self._vbw.cellClicked.connect(self._w_cell_selected)
@@ -165,9 +106,6 @@ class NMFView(GraphicsLayoutWidget):
         self._channels = 112
         self.set_channel_names(["random"] * self._channels)
 
-        # Add items to viewboxes
-        self._vbh.matrix = np.random.normal(size=(self._time_points, self._rank))
-        self._vbw.matrix = np.random.normal(size=(self._rank, self._channels))
         self._vbfm.matrix = np.random.normal(size=(self._time_points, self._channels))
 
         # Add Control box for H thresholds
@@ -176,6 +114,10 @@ class NMFView(GraphicsLayoutWidget):
         self._proxy.setWidget(self._control_box)
         self._proxy.setContentsMargins(0, 0, 0, 0)
         self.addItem(self._proxy, row=0, col=0)
+
+        # Add items to viewboxes
+        self.set_h_matrix(np.random.normal(size=(self._rank, self._time_points)))
+        self.set_w_matrix(np.random.normal(size=(self._channels, self._rank)))
 
         self._update_dimensions()
 
@@ -194,19 +136,34 @@ class NMFView(GraphicsLayoutWidget):
         self._update_dimensions()
         self._vbh.matrix = data
 
+        # Configure ticks such that minorticks show the value of
+        # the current row and majorticks designate the row border
+        row_heigth = self._vbh.row_height
+        majorticks = [(i * row_heigth, "") for i in range(self._rank + 1)]
+        minorticks = [((i + 0.5) * row_heigth, f"{i+1:.0f}") for i in range(self._rank)]
+        axis = self._plot_h.getAxis("right")
+        axis.setTicks([majorticks, minorticks])
+
     def h_matrix(self) -> np.ndarray:
         return self._vbh.matrix.T
 
     def set_w_matrix(self, data: np.ndarray) -> None:
         data = data.T
-        self._channels = data.shape[0]
+        self._rank, self._channels = data.shape
         self._vbw.matrix = data
+
+        # Configure ticks such that minorticks show the value of
+        # the current column and majorticks designate the column border
+        majorticks = [(i, "") for i in range(self._rank + 1)]
+        minorticks = [(i + 0.5, f"{i+1:.0f}") for i in range(self._rank)]
+        axis = self._plot_w.getAxis("bottom")
+        axis.setTicks([majorticks, minorticks])
 
     def w_matrix(self) -> np.ndarray:
         return self._vbw.matrix.T
 
     def set_feature_matrix(
-        self, data: np.ndarray, start_timestamp=0, autoLevels=False
+        self, data: np.ndarray, start_timestamp=0, autoLevels=True
     ) -> None:
         self._time_axis.start_timestamp = start_timestamp
         self._time_axis.sfreq = self.feature_matrix_sampling_frequency
@@ -335,12 +292,13 @@ class NMFView(GraphicsLayoutWidget):
         # channel = i, h_row, w_col = j
         h_row = self._vbh.matrix[:, x]
         ll_row = self._vbfm.matrix[:, y]
+        w_val = self._vbw.matrix[x, y]
 
         # get 100 largest ll_row values
         ll_desc_index = np.flip(np.argsort(ll_row))[:100]
 
-        # on the difference between h and ll, chose those corresponding to large ll values
-        candidates = (ll_row - h_row)[ll_desc_index]
+        # on the difference between w*h and ll, chose those corresponding to large ll values
+        candidates = np.abs((ll_row - w_val * h_row)[ll_desc_index])
 
         # the smaller the value, the larger the importance of w and h: chose smallest value as candidate
         candidate_index = np.argsort(candidates)[0]
